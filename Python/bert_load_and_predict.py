@@ -10,7 +10,6 @@ from bert import run_classifier
 from bert import tokenization
 
 # config
-MODEL_PATH = "../1594451215"
 BERT_MODEL_HUB = "https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1"
 MAX_SEQ_LEN = 128
 
@@ -23,7 +22,10 @@ def predict(sentences, predict_fn):
             text_a=x,
             text_b=None,
             label=0
-        ) for x in sentences]  # here, "" is just a dummy label
+        ) for x in sentences]
+    # get tokenizer
+    tokenizer = create_tokenizer_from_hub_module()
+
     input_features = run_classifier.convert_examples_to_features(
         input_examples, labels, MAX_SEQ_LEN, tokenizer
     )
@@ -44,9 +46,9 @@ def predict(sentences, predict_fn):
         'segment_ids': all_segment_ids,
         'label_ids': all_label_ids
     }
-
     predictions = predict_fn(pred_dict)
     return np.exp(predictions['probabilities'][:, 1])
+
 
 def create_tokenizer_from_hub_module():
     """Get the vocab file and casing info from the Hub module."""
@@ -59,18 +61,3 @@ def create_tokenizer_from_hub_module():
 
     return bert.tokenization.FullTokenizer(
         vocab_file=vocab_file, do_lower_case=do_lower_case)
-
-
-
-
-if __name__ == "__main__":
-    predict_fn = tf.contrib.predictor.from_saved_model(MODEL_PATH)
-    tokenizer = create_tokenizer_from_hub_module()
-    pred_sentences = [
-        "That movie was absolutely awful",
-        "The acting was a bit lacking",
-        "The film was creative and surprising",
-        "Absolutely fantastic!",
-    ]
-    predictions = predict(pred_sentences, predict_fn)
-    print(predictions)
