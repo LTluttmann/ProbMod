@@ -1,4 +1,3 @@
-from tensorflow import keras
 import os
 import re
 import pandas as pd
@@ -69,7 +68,7 @@ def download_and_load_datasets(force_download=False):
                                         "aclImdb", "test"))
 
     # dont bias the model with neutral sentences during training stage
-    train_df = train_df[(train_df.sentiment <= 3) | (train_df.sentiment >= 8)]
+    train_df = train_df[(train_df.sentiment.astype('int') <= 3) | (train_df.sentiment.astype('int') >= 8)]
     return train_df, test_df
 
 
@@ -79,3 +78,8 @@ def get_full_train_and_test():
     df_train = pd.concat([imdb_df_train, sf_df_train], axis=0).reset_index(drop=True)
     df_test = pd.concat([imdb_df_test, sf_df_test], axis=0).reset_index(drop=True)
     return df_train, df_test
+
+if __name__ == "__main__":
+    a, b = get_full_train_and_test()
+    pd.to_pickle(a, "../Data/train.pkl")
+    pd.to_pickle(b, "../Data/test.pkl")
