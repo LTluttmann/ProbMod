@@ -15,7 +15,7 @@ to account for observations that are equal to zero.
 
 gp_mod_pois = """
 functions {
-  vector gen_pred_gp(real[] x_pred,
+  vector gp_pred_rng(real[] x_pred,
                      vector y_is,
                      real[] x_is,
                      real alpha,
@@ -95,7 +95,7 @@ model {
 generated quantities {
   vector[N_pred] f_pred;
   int y_pred[N_pred];
-  f_pred = gen_pred_gp(x_pred, t, x, alpha, length_scale, sigma);
+  f_pred = gp_pred_rng(x_pred, t, x, alpha, length_scale, sigma);
   for (n in 1:N_pred)
      y_pred[n] = poisson_log_rng(f_pred[n]);
 }
