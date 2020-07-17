@@ -13,11 +13,12 @@ of y as an input to the function gen_pred_gp. To be more precise, y_is = log(y) 
 to account for observations that are equal to zero.
 """
 
+
 gp_mod_pois = """
 functions {
-  vector gp_pred_rng(real[] x_pred,
+  vector gp_pred_rng(row_vector[] x_pred,
                      vector y_is,
-                     real[] x_is,
+                     row_vector[] x_is,
                      real alpha,
                      real length_scale,
                      real sigma) {
@@ -55,11 +56,12 @@ functions {
 }
 data {
   int<lower=1> N;
+  int<lower=1> D;
   int<lower=1> N_pred;
   int y[N];
-  real x[N];
+  row_vector[D] x[N];
   vector[N] zeros;
-  real x_pred[N_pred];
+  row_vector[D] x_pred[N_pred];
 }
 transformed data{
   vector[N] t;
