@@ -66,7 +66,29 @@ def get_pred_plot_with_conf(fit, iters, mean_preds, test):
     mean_pred = mean_preds
     true = test
     plo = plt.plot(mean_pred, label="Backest.")
-    plo = plt.plot(true, label="True", linestyle="--", alpha=0.7, color='r')
-    plt.ylim([0, 20])
+    # plo = plt.scatter(true, label="True", alpha=0.5, color='r')
+    # plt.ylim([0, 20])
     plo = plt.legend()
     return plo
+
+
+def calc_mape(y_hat, y_test):
+    # calc interpretable (MAPE in [0,1])  error measure
+    ape = []
+    for i in range(len(y_hat)):
+        if y_test[i] == 0:
+            ape.append(np.abs(y_test[i] - y_hat[i]) / (y_test[i] + 1))
+        else:
+            ape.append(np.abs(y_hat[i] - y_test[i]) / y_test[i])
+    return np.mean(ape)
+
+
+def calc_median_ape(y_hat, y_test):
+    # calc interpretable (MAPE in [0,1])  error measure
+    ape = []
+    for i in range(len(y_hat)):
+        if y_test[i] == 0:
+            ape.append(np.abs(y_test[i] - y_hat[i]) / (y_test[i] + 1))
+        else:
+            ape.append(np.abs(y_hat[i] - y_test[i]) / y_test[i])
+    return np.median(ape)

@@ -14,7 +14,7 @@ to account for observations that are equal to zero.
 """
 
 
-gp_mod_pois = """
+gp_mod = """
 functions {
   vector gp_pred_rng(row_vector[] x_pred,
                      vector y_is,
@@ -46,10 +46,11 @@ functions {
       f_pred_mu = (k_x_is_x_pred' * K_div_y_is); 
       v_pred = mdivide_left_tri_low(L_Sigma, k_x_is_x_pred);
       cov_f_pred = cov_exp_quad(x_pred, alpha, length_scale) - v_pred' * v_pred;
-      nug_pred = diag_matrix(rep_vector(1e-10, N_pred));
+      nug_pred = diag_matrix(rep_vector(1e-12, N_pred));
 
       f_pred = multi_normal_rng(f_pred_mu, cov_f_pred + nug_pred);
     }
+    print("these are the log scaled observations: ", y_is)
     return f_pred;
   }
 }
@@ -57,15 +58,10 @@ data {
   int<lower=1> N;
   int<lower=1> D;
   int<lower=1> N_pred;
-  int y[N];
+  vector[N] y;
   row_vector[D] x[N];
   vector[N] zeros;
   row_vector[D] x_pred[N_pred];
-}
-transformed data{
-  vector[N] t;
-  for (i in 1:N)
-    t[i] = log(y[i]);
 }
 parameters {
   real<lower=0> length_scale;
@@ -86,18 +82,17 @@ transformed parameters {
   }
 }
 model {
-  vector[N] y_reg;
   length_scale ~ gamma(2, 20);
   alpha ~ normal(0, 1);
   f_eta ~ normal(0, 1);
   sigma ~ normal(0,1);
-  y ~ poisson_log(f);
+  y ~ normal(f, sigma);
 }
 generated quantities {
   vector[N_pred] f_pred;
-  int y_pred[N_pred];
-  f_pred = gp_pred_rng(x_pred, t, x, alpha, length_scale, sigma);
+  vector[N_pred] y_pred;
+  f_pred = gp_pred_rng(x_pred, y, x, alpha, length_scale, sigma);
   for (n in 1:N_pred)
-     y_pred[n] = poisson_log_rng(f_pred[n]);
+     y_pred[n] = normal_rng(f_pred[n], sigma);
 }
 """

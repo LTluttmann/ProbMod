@@ -12,6 +12,7 @@ from bert_load_and_predict import predict
 MODEL_PATH = "../1594730309"
 DATAMART_PATH = "../Data/final.xlsx"
 SAVE_SENT_PATH = '../Data/sent_scores.pkl'
+SAVE_DF_SENT_PATH = '../Data/sent_scores_df.pkl'
 SENT_FEATURES = ["mean_sent_score",
                  "median_sent_score",
                  "ratio_pos_tweets",
@@ -75,6 +76,9 @@ if __name__ == "__main__":
         print("predictions successfully made")
         for feature in SENT_FEATURES:
             sent_results[title].append(eval(feature)(predictions))
+        # the twitter api seems to be rather unstable, thus dump current results after each iteration
         with open(SAVE_SENT_PATH, 'wb') as handle:
             pickle.dump(sent_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    print("done")
+    # when the analysis is done, transform the dictionary to a pd Dataframe and dump it
+    df_sent = pd.DataFrame.from_dict(sent_results, orient='index', columns=SENT_FEATURES)
+    df_sent.to_pickle(SAVE_DF_SENT_PATH)

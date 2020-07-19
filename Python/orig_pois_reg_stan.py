@@ -28,11 +28,8 @@ parameters {
 
 transformed parameters {
   real lp[N];
-  real lambda[N];
   for (i in 1:N) 
-    lp[i] = alpha[c[i]+1] + x[i] * beta[c[i]+1] ;
-  for (i in 1:N) 
-    lambda[i] = exp(lp[i]);
+    lp[i] = alpha[c[i]+1] + x[i] * beta[c[i]+1]; //+1 bc python is zero indexed but stan indices start at 1
 }
 
 model {
@@ -41,23 +38,20 @@ model {
     sigma_alpha ~ inv_gamma(a, b);
 
     for (ci in 1:C) 
-      beta[ci] ~ normal(mu_beta, sigma_beta);
-
+        beta[ci] ~ normal(mu_beta, sigma_beta);
     for (ci in 1:C) 
-      alpha[ci] ~ normal(0, sigma_alpha);
-
-    y ~ poisson(lambda);
+        alpha[ci] ~ normal(0, sigma_alpha);
+    for (i in 1:N) {
+        y[i] ~ poisson_log(lp[i]);
+    }
 }
 generated quantities {
   vector<lower=0>[N_test] y_pred;
   real lp_test[N_test];
-  real lambda_test[N_test];
   for (i in 1:N_test)
     lp_test[i] = alpha[c_test[i]+1] + x_test[i] * beta[c_test[i]+1] ;
-  for (i in 1:N_test) 
-    lambda_test[i] = exp(lp_test[i]);
   for (i in 1:N_test) {
-    y_pred[i] = poisson_rng(lambda_test[i]);
+    y_pred[i] = poisson_log_rng(lp_test[i]);
   }
 }
 '''

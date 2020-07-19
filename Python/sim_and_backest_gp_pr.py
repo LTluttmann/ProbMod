@@ -54,94 +54,95 @@ generated quantities {
 }
 """
 
-# compile stan code to simulate data from gaussian process
-try:
-    sm = pickle.load(open("../stan_dumps/" + 'sim_gp_pr.pkl', 'rb'))
-except FileNotFoundError:
-    sm = pystan.StanModel(model_code=sim_data, model_name='sim_gp_pr')
-    pickle.dump(sm, open("../stan_dumps/" + 'sim_gp_pr.pkl', 'wb'))
+if __name__ == "__main__":
+    # compile stan code to simulate data from gaussian process
+    try:
+        sm = pickle.load(open("../stan_dumps/" + 'sim_gp_pr.pkl', 'rb'))
+    except FileNotFoundError:
+        sm = pystan.StanModel(model_code=sim_data, model_name='sim_gp_pr')
+        pickle.dump(sm, open("../stan_dumps/" + 'sim_gp_pr.pkl', 'wb'))
 
-# specify necessary data for simulation, especially the hyperparameters for the kernel
-data = dict(
-    N=300,
-    alpha=1,
-    length_scale=0.15,
-    sigma=np.sqrt(0.1)
-)
+    # specify necessary data for simulation, especially the hyperparameters for the kernel
+    data = dict(
+        N=300,
+        alpha=1,
+        length_scale=0.15,
+        sigma=np.sqrt(0.1)
+    )
 
-# simulate data from the model
-draw = sm.sampling(data=data, iter=1, algorithm='Fixed_param', chains=1, seed=363360090)
+    # simulate data from the model
+    draw = sm.sampling(data=data, iter=1, algorithm='Fixed_param', chains=1, seed=363360090)
 
-# put the simulated data in a data frame
-samps = draw.extract()
-df = pd.DataFrame({"x": samps['x'][0],
-                   "y": samps["y_pois"][0],
-                   "f": np.exp(samps["f"][0])})
+    # put the simulated data in a data frame
+    samps = draw.extract()
+    df = pd.DataFrame({"x": samps['x'][0],
+                       "y": samps["y_pois"][0],
+                       "f": np.exp(samps["f"][0])})
 
-# sort according to x-axis for plotting purposes
-df.sort_values('x', inplace=True)
+    # sort according to x-axis for plotting purposes
+    df.sort_values('x', inplace=True)
 
-# sample points
-sample = np.random.choice(df.index, 60, replace=False)
+    # sample points
+    sample = np.random.choice(df.index, 60, replace=False)
 
-# plotting of the simulated data
-plt.scatter(df.loc[sample].x, df.loc[sample].y)
-plt.plot(df.x, df.f, c='r')
-plt.show()
-# transform the observations to type integer, otherwise stan will throw errors.
-df.y = df.y.astype('int')
-# data for predicting new observations using x*
-stan_data_pois = dict(N=len(sample), N_pred=data['N'] - len(sample),
-                      zeros=np.zeros(len(sample)), x=df.loc[sample].x,
-                      y=df.loc[sample].y,
-                      x_pred=df.loc[~df.index.isin(sample)].x)
+    # plotting of the simulated data
+    plt.scatter(df.loc[sample].x, df.loc[sample].y)
+    plt.plot(df.x, df.f, c='r')
+    plt.show()
+    # transform the observations to type integer, otherwise stan will throw errors.
+    df.y = df.y.astype('int')
+    # data for predicting new observations using x*
+    stan_data_pois = dict(N=len(sample), N_pred=data['N'] - len(sample),
+                          zeros=np.zeros(len(sample)), x=df.loc[sample].x,
+                          y=df.loc[sample].y,
+                          x_pred=df.loc[~df.index.isin(sample)].x)
 
-# compile the stan code for doing inference (gp_pr_stan.py)
-try:
-    gp = pickle.load(open("../stan_dumps/" + 'pred_gp_pr.pkl', 'rb'))
-except FileNotFoundError:
-    gp = pystan.StanModel(model_code=gp_mod_pois, model_name='pred_gp_pr')
-    pickle.dump(gp, open("../stan_dumps/" + 'pred_gp_pr.pkl', 'wb'))
+    # compile the stan code for doing inference (gp_pr_stan.py)
+    try:
+        gp = pickle.load(open("../stan_dumps/" + 'pred_gp_pr.pkl', 'rb'))
+    except FileNotFoundError:
+        gp = pystan.StanModel(model_code=gp_mod_pois, model_name='pred_gp_pr')
+        pickle.dump(gp, open("../stan_dumps/" + 'pred_gp_pr.pkl', 'wb'))
 
-# do the HMC sampling (default 4 chains)
-fit = gp.sampling(data=stan_data_pois, chains=1)
-pois_samps = fit.extract()
+    # do the HMC sampling (default 4 chains)
+    fit = gp.sampling(data=stan_data_pois)
+    pois_samps = fit.extract()
 
-# ----------------------------Do the model diagnostics-------------------------------------------
-# retrieve parameters
-alpha_fit = pois_samps['alpha']
-sigma_fit = pois_samps['sigma']
-length_scale = pois_samps['length_scale']
-# plot results
-plot_trace(alpha_fit, 'alpha', data['alpha'])
-plt.show()
-plot_trace(length_scale, 'length scale', data['length_scale'])
-plt.show()
-plot_trace(sigma_fit, 'sigma', data['sigma'])
-plt.show()
-# get model summary
-summary_dict = fit.summary()
-sum_df = pd.DataFrame(summary_dict['summary'],
-                      columns=summary_dict['summary_colnames'],
-                      index=summary_dict['summary_rownames'])
-# get mean predictions per new observation
-y_test = df.loc[~df.index.isin(sample)].y.values
-y_hat = []
-for i in range(df.loc[~df.index.isin(sample)].x.shape[0]):
-    y_hat.append(sum_df.loc['y_pred[{}]'.format(i + 1)]['mean'])
+    # ----------------------------Do the model diagnostics-------------------------------------------
+    # retrieve parameters
+    alpha_fit = pois_samps['alpha']
+    sigma_fit = pois_samps['sigma']
+    length_scale = pois_samps['length_scale']
+    # plot results
+    plot_trace(alpha_fit, 'alpha', data['alpha'])
+    plt.show()
+    plot_trace(length_scale, 'length scale', data['length_scale'])
+    plt.show()
+    plot_trace(sigma_fit, 'sigma', data['sigma'])
+    plt.show()
+    # get model summary
+    summary_dict = fit.summary()
+    sum_df = pd.DataFrame(summary_dict['summary'],
+                          columns=summary_dict['summary_colnames'],
+                          index=summary_dict['summary_rownames'])
+    # get mean predictions per new observation
+    y_test = df.loc[~df.index.isin(sample)].y.values
+    y_hat = []
+    for i in range(df.loc[~df.index.isin(sample)].x.shape[0]):
+        y_hat.append(sum_df.loc['y_pred[{}]'.format(i + 1)]['mean'])
 
-get_pred_plot_with_conf(fit, 250, y_hat, y_test)
-plt.show()
-# plot
-plt.scatter(df.loc[~df.index.isin(sample)].x, y_hat, c='r')
-plt.scatter(df.loc[~df.index.isin(sample)].x, df.loc[~df.index.isin(sample)].y, c='b')
-plt.show()
+    get_pred_plot_with_conf(fit, 250, y_hat, y_test)
+    plt.show()
+    # plot
+    plt.scatter(df.loc[~df.index.isin(sample)].x, y_hat, c='r')
+    plt.scatter(df.loc[~df.index.isin(sample)].x, df.loc[~df.index.isin(sample)].y, c='b')
+    plt.show()
 
-# calc interpretable (MAPE in [0,1])  error measure
-ape = []
-for i in range(len(y_hat)):
-    if y_test[i] == 0:
-        ape.append(np.abs(y_test[i] - y_hat[i]) / (y_test[i] + 1))
-    else:
-        ape.append(np.abs(y_hat[i] - y_test[i]) / y_test[i])
-print("MAPE:", np.mean(ape))
+    # calc interpretable (MAPE in [0,1])  error measure
+    ape = []
+    for i in range(len(y_hat)):
+        if y_test[i] == 0:
+            ape.append(np.abs(y_test[i] - y_hat[i]) / (y_test[i] + 1))
+        else:
+            ape.append(np.abs(y_hat[i] - y_test[i]) / y_test[i])
+    print("MAPE:", np.mean(ape))
