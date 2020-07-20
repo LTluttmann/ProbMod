@@ -24,7 +24,7 @@ DUMP_COMPILED_MODEL = True
 # Define Target variable and Features
 TARGET = "worldwide_box_office"
 FEATURES = [
-    'production_budget', 'dist', 'stars', 'direc',
+    'production_budget', 'dist', 'stars', 'direc', 'screens',
     'opening_weekend_revenue', 'num_pos_tweets',
     'adventure', 'comedy', 'docu', 'drama', 'horror', 'musical', 'thriller',
     'action'
@@ -53,11 +53,11 @@ def get_and_filter_df(path_to_movie_data, path_to_sent_analysis):
     final_df = final_df[final_df.production_budget > 0]
     # EDA (see script EDA.ipynb) has shown that movies with the following conditions are severe outliers
     # (probably mistakes in data)
-    #final_df = final_df.loc[~pd.Series((np.log(final_df.production_budget) > 2.75) & (final_df.screens < 1000))]
+    final_df = final_df.loc[~pd.Series((np.log(final_df.production_budget) > 2.75) & (final_df.screens < 1000))]
     # remove outlier (hard to predict with any model)
-    #up_quant = np.quantile(final_df[TARGET], 0.85)
-    #low_quant = np.quantile(final_df[TARGET], 0.05)
-    #final_df = final_df.loc[(final_df[TARGET] > low_quant) & (final_df[TARGET] < up_quant)]
+    up_quant = np.quantile(final_df[TARGET], 0.85)
+    low_quant = np.quantile(final_df[TARGET], 0.05)
+    final_df = final_df.loc[(final_df[TARGET] > low_quant) & (final_df[TARGET] < up_quant)]
     return final_df
 
 
@@ -79,34 +79,34 @@ def get_train_test(full_df, features, frac_test_set=0.2, sample_size=None, scale
     return X_train, X_test, y_train, y_test
 
 
-def get_model_data_dict(X_train, X_test, y_train, scale=True):
-    X_train=X_train.copy()
-    X_test=X_test.copy()
+def get_model_data_dict(train_df_x, test_df_x, train_df_y, scale=True):
+    train_df_x = train_df_x.copy()
+    test_df_x = test_df_x.copy()
     if scale:
         scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
+        train_df_x = scaler.fit_transform(train_df_x)
+        test_df_x = scaler.transform(test_df_x)
     else:
-        X_train = X_train.values
-        X_test = X_test.values
-    stan_data_gp = dict(N=X_train.shape[0], D=X_train.shape[1], N_pred=X_test.shape[0],
-                        zeros=np.zeros(X_train.shape[0]), x=X_train,
-                        y=np.log(y_train.values.ravel()),
-                        x_pred=X_test)
+        train_df_x = train_df_x.values
+        test_df_x = test_df_x.values
+    stan_data_gp = dict(N=train_df_x.shape[0], D=train_df_x.shape[1], N_pred=test_df_x.shape[0],
+                        zeros=np.zeros(train_df_x.shape[0]), x=train_df_x,
+                        y=np.log(train_df_y.values.ravel()),
+                        x_pred=test_df_x)
 
-    stan_data_gp_pr = dict(N=X_train.shape[0], D=X_train.shape[1], N_pred=X_test.shape[0],
-                           zeros=np.zeros(X_train.shape[0]), x=X_train,
-                           y=y_train.values.ravel(),
-                           x_pred=X_test)
+    stan_data_gp_pr = dict(N=train_df_x.shape[0], D=train_df_x.shape[1], N_pred=test_df_x.shape[0],
+                           zeros=np.zeros(train_df_x.shape[0]), x=train_df_x,
+                           y=train_df_y.values.ravel(),
+                           x_pred=test_df_x)
 
     if not scale:
         transformer = FunctionTransformer(np.log1p, validate=True)
-        X_train = transformer.transform(X_train)
-        X_test = transformer.transform(X_test)
+        train_df_x = transformer.transform(train_df_x)
+        test_df_x = transformer.transform(test_df_x)
 
-    stan_data_base = dict(x=X_train, N=X_train.shape[0], C=1, D=X_train.shape[1],
-                          c=[0] * X_train.shape[0], y=y_train.values.ravel(),
-                          N_test=X_test.shape[0], x_test=X_test, c_test=[0] * X_test.shape[0])
+    stan_data_base = dict(x=train_df_x, N=train_df_x.shape[0], C=1, D=train_df_x.shape[1],
+                          c=[0] * train_df_x.shape[0], y=train_df_y.values.ravel(),
+                          N_test=test_df_x.shape[0], x_test=test_df_x, c_test=[0] * test_df_x.shape[0])
 
     mod_data_dict = dict(
         pred_gp=stan_data_gp,
@@ -118,9 +118,8 @@ def get_model_data_dict(X_train, X_test, y_train, scale=True):
 
 
 if __name__ == "__main__":
-    np.random.seed(652823193)
     df = get_and_filter_df(DATAMART_PATH, SENT_PATH)
-    X_train, X_test, y_train, y_test = get_train_test(df, features=FEATURES, frac_test_set=0.2, scale_factor=1000, sample_size=150)
+    X_train, X_test, y_train, y_test = get_train_test(df, features=FEATURES, frac_test_set=0.2, sample_size=230, scale_factor=1000)
     model_data_dict = get_model_data_dict(X_train, X_test, y_train, scale=False)
     for mod in MODELS_TO_TRAIN:
         print("Now doing inference with model {}".format(mod))
