@@ -32,6 +32,9 @@
 .idea
 .DS_Store?
 ._*
+_*
+.idea
+.ipynb_checkpoints
 .Spotlight-V100
 .Trashes
 ehthumbs.db
