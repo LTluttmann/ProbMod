@@ -1,4 +1,5 @@
 absl-py==0.9.0
+arviz==0.9.0
 astor==0.8.1
 astunparse==1.6.3
 attrs==19.3.0
@@ -7,16 +8,20 @@ bert-tensorflow==1.0.1
 bleach @ file:///home/conda/feedstock_root/build_artifacts/bleach_1588608214987/work
 cachetools==4.1.1
 certifi==2020.6.20
+cftime==1.2.0
 chardet==3.0.4
 cloudpickle==1.5.0
 colorama==0.4.3
-Cython==0.29.21
+cssselect==1.1.0
+cycler==0.10.0
+Cython @ file:///D:/bld/cython_1594253747180/work
 decorator==4.4.2
 defusedxml==0.6.0
 dill==0.3.2
 entrypoints==0.3
 future==0.18.2
 gast==0.2.2
+GetOldTweets3==0.0.11
 google-auth==1.18.0
 google-auth-oauthlib==0.4.1
 google-pasta==0.2.0
@@ -30,17 +35,23 @@ ipython @ file:///D:/bld/ipython_1593235680304/work
 ipython-genutils==0.2.0
 jedi @ file:///D:/bld/jedi_1592619562975/work
 Jinja2==2.11.2
+joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1593624380152/work
 jsonschema==3.2.0
 jupyter-client @ file:///home/conda/feedstock_root/build_artifacts/jupyter_client_1593562235049/work
 jupyter-core==4.6.3
 Keras-Applications==1.0.8
 Keras-Preprocessing==1.1.2
+kiwisolver==1.2.0
+lxml==4.5.2
 Markdown==3.2.2
 MarkupSafe==1.1.1
+matplotlib @ file:///D:/bld/matplotlib-base_1594091882257/work
 mistune==0.8.4
 mpmath==1.1.0
+multiprocess==0.70.10
 nbconvert==5.6.1
 nbformat @ file:///home/conda/feedstock_root/build_artifacts/nbformat_1594060262917/work
+netCDF4==1.5.3
 notebook @ file:///D:/bld/notebook_1594079038368/work
 numpy==1.19.0
 oauthlib==3.1.0
@@ -58,9 +69,15 @@ pyasn1==0.4.8
 pyasn1-modules==0.2.8
 Pygments==2.6.1
 pyparsing==2.4.7
+PyQt5==5.12.3
+PyQt5-sip==4.19.18
+PyQtChart==5.12
+PyQtWebEngine==5.12.1
+pyquery==1.4.1
 pyrsistent==0.16.0
 pystan==2.19.1.1
 python-dateutil==2.8.1
+pytreebank==0.2.7
 pytz==2020.1
 pywin32==227
 pywinpty==0.5.7
@@ -68,18 +85,20 @@ pyzmq==19.0.1
 requests==2.24.0
 requests-oauthlib==1.3.0
 rsa==4.6
+scikit-learn @ file:///D:/bld/scikit-learn_1589921036638/work
 scipy==1.4.1
+seaborn==0.10.1
 Send2Trash==1.5.0
 six @ file:///home/conda/feedstock_root/build_artifacts/six_1590081179328/work
 tensorboard==1.15.0
 tensorboard-plugin-wit==1.6.0.post3
 tensorboardcolab==0.0.22
-tensorflow==1.15.2
+tensorflow==1.15.0
 tensorflow-addons==0.8.3
 tensorflow-datasets==2.1.0
 tensorflow-estimator==1.15.1
 tensorflow-gcs-config==2.2.0
-tensorflow-gpu==1.15.2
+tensorflow-gpu==1.15.0
 tensorflow-hub==0.8.0
 tensorflow-metadata==0.22.2
 tensorflow-privacy==0.2.2
@@ -87,6 +106,7 @@ tensorflow-probability==0.10.0
 termcolor==1.1.0
 terminado==0.8.3
 testpath==0.4.4
+threadpoolctl @ file:///tmp/tmp79xdzxkt/threadpoolctl-2.1.0-py3-none-any.whl
 tornado==6.0.4
 tqdm==4.47.0
 traitlets==4.3.3
@@ -97,4 +117,6 @@ webencodings==0.5.1
 Werkzeug==1.0.1
 wincertstore==0.2
 wrapt==1.12.1
+xarray==0.16.0
+xlrd==1.2.0
 zipp==3.1.0
