@@ -51,7 +51,6 @@ def predict(sentences, predict_fn):
 
 
 def create_tokenizer_from_hub_module():
-    """Get the vocab file and casing info from the Hub module."""
     with tf.Graph().as_default():
         bert_module = hub.Module(BERT_MODEL_HUB)
         tokenization_info = bert_module(signature="tokenization_info", as_dict=True)
