@@ -32,7 +32,7 @@
 .idea
 .DS_Store?
 ._*
-_*
+__pycache__
 .idea
 .ipynb_checkpoints
 .Spotlight-V100
