@@ -19,6 +19,7 @@ data {
     int<lower=1> D;
     vector[D] x[N];
     // real<lower=0> a[C];
+    real<lower=0> length_scale;
 }
 transformed data {
     vector[N] zeros;
@@ -30,13 +31,13 @@ generated quantities {
     int y_sim[N];
     real<lower=0> alpha;
     real<lower=0> sigma;
-    real<lower=0> length_scale;
+    // real<lower=0> length_scale;
     real<lower=0> a[C];
     for (c in 1:C)
         a[c] = weibull_rng(2,1);
     alpha = weibull_rng(2,1);
     sigma = weibull_rng(2,1);
-    length_scale = inv_gamma_rng(5, 5);
+    // length_scale = inv_gamma_rng(5, 5);
     {
         matrix[N, N] cov;
         matrix[N, N] L_cov;
@@ -60,6 +61,7 @@ data {
     int<lower=1,upper=C> cc[N];
     int<lower=1> D;
     vector[D] x[N];
+    real<lower=0> length_scale;
 }
 transformed data {
     vector[N] zeros;
@@ -71,14 +73,14 @@ generated quantities {
     real y_sim[N];
     real<lower=0> alpha;
     real<lower=0> sigma;
-    real<lower=0> length_scale;
+    //real<lower=0> length_scale;
     real a[C];
     real<lower=0> sigma_out = inv_gamma_rng(4,4);
     for (c in 1:C)
         a[c] = normal_rng(0,1);
     alpha = weibull_rng(2,1);
     sigma = weibull_rng(2,1);
-    length_scale = inv_gamma_rng(5, 5);
+    //length_scale = inv_gamma_rng(5, 5);
     {
         matrix[N, N] cov;
         matrix[N, N] L_cov;

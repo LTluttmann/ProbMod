@@ -8,12 +8,12 @@ from time import time
 # import of stan models
 from stan.gp_pr_stan import gp_mod_pois, hierarchical_gp_pr_mod
 from stan.gp_stan import gp_mod, hierarchical_gp_mod
-from stan.orig_pois_reg_stan import hierarchical_model_pois
-from stan.regularized_pois_reg_stan import hierarchical_model_regularized
+from stan.orig_pois_reg_stan import hierarchical_model_pois, hierarchical_model_normal
+from stan.regularized_pois_reg_stan import hierarchical_model_regularized, hierarchical_model_regularized_normal
 
 # ---------------------------------------------------- CONFIG ----------------------------------------------------------
 # path to the data
-DATAMART_PATH = '../Data/final.xlsx'
+DATAMART_PATH = '../Data/final2.xlsx'
 SENT_PATH = '../Data/sent_scores_df.pkl'
 
 # define path to store compiled stan model
@@ -24,10 +24,12 @@ PRED_RESULTS_PATH = "../results/"
 # pred_gp: gaussian process regression with normal output
 # pred_gp_pr: gaussian process regression with poisson output
 # pred_base: baseline model by Neelemegham
+# pred_base_normal: baseline with normal output
 # pred_horseshoe: baseline with shrinkage priors on regression weights
+# pred_horseshoe_normal: like horseshoe, but with normal output
 # pred_hiera_gp_pr : gaussian process regression with normal output and hierarchies
 # pred_hiera_gp: gaussian process regression with poisson output and hierarchies
-MODELS_TO_TRAIN = ["pred_base", "pred_horseshoe", "pred_gp"]
+MODELS_TO_TRAIN = ["pred_horseshoe", "pred_base"]  #"pred_base", , "pred_gp" , "pred_gp"
 
 # Define Target variable
 TARGET = "worldwide_box_office"
@@ -36,8 +38,7 @@ TARGET = "worldwide_box_office"
 FEATURES = [
     'production_budget', 'dist', 'stars', 'direc', 'screens',
     'opening_weekend_revenue', 'ratio_pos_tweets', 'total_tweets',
-    'adventure', 'comedy', 'docu', 'drama', 'horror', 'musical', 'thriller',
-    'action'
+    'adventure', 'comedy', 'drama', 'horror', 'thriller', 'action', 'dec', 'romcomedy'
 ]
 """"""
 # ----------------------------------------------------------------------------------------------------------------------
@@ -47,7 +48,9 @@ model_code_dict = dict(
     pred_gp=gp_mod,
     pred_gp_pr=gp_mod_pois,
     pred_base=hierarchical_model_pois,
+    pred_base_normal=hierarchical_model_normal,
     pred_horseshoe=hierarchical_model_regularized,
+    pred_horseshoe_normal=hierarchical_model_regularized_normal,
     pred_hiera_gp_pr=hierarchical_gp_pr_mod,
     pred_hiera_gp=hierarchical_gp_mod
 )
@@ -57,6 +60,8 @@ scales = dict(
     pred_gp="log",
     pred_gp_pr=10000,
     pred_base=10000,
+    pred_base_normal=None,
+    pred_horseshoe_normal=None,
     pred_horseshoe=10000,
     pred_hiera_gp_pr=10000,
     pred_hiera_gp='log'
@@ -72,7 +77,7 @@ def get_and_filter_df(path_to_movie_data: str, path_to_sent_analysis: str):
     :return: data frame containing input space variables and target variable
     """
     df_mdb = pd.read_excel(path_to_movie_data)
-    df_mdb.columns = [x.lower().replace(" ", "_") for x in df_mdb.columns]
+    df_mdb.columns = [x.lower().replace(" ", "_").replace(".", "_") for x in df_mdb.columns]
     df_mdb.set_index('title', inplace=True)
     df_sent = pd.read_pickle(path_to_sent_analysis)
     df_sent['num_pos_tweets'] = df_sent.ratio_pos_tweets * df_sent.total_tweets
@@ -86,7 +91,7 @@ def get_and_filter_df(path_to_movie_data: str, path_to_sent_analysis: str):
     final_df = final_df.loc[~pd.Series((np.log(final_df.production_budget) > 2.75) & (final_df.screens < 1000))]
     # remove outlier (hard to predict with any model)
     up_quant = np.quantile(final_df[TARGET], 0.95)
-    low_quant = np.quantile(final_df[TARGET], 0.05)
+    low_quant = np.quantile(final_df[TARGET], 0.20)
     final_df = final_df.loc[(final_df[TARGET] > low_quant) & (final_df[TARGET] < up_quant)]
     return final_df
 
@@ -129,6 +134,11 @@ def get_model_data_dict(model_class: str, train_df_x: pd.DataFrame, test_df_x: p
                               c=c_ind, y=train_df_y.values.ravel(),
                               N_test=test_df_x.shape[0], x_test=test_df_x, c_test=c_test_ind)
         return stan_data_base
+    elif model_class in ['pred_base_normal', 'pred_horseshoe_normal']:
+        stan_data_base = dict(x=train_df_x, N=train_df_x.shape[0], C=C, D=train_df_x.shape[1],
+                              c=c_ind, y=train_df_y.values.ravel(),
+                              N_test=test_df_x.shape[0], x_test=test_df_x, c_test=c_test_ind)
+        return stan_data_base
 
     elif model_class in ['pred_hiera_gp_pr', 'pred_hiera_gp']:
         # standard scale to avoid biases in rbf kernel
@@ -145,56 +155,59 @@ def get_model_data_dict(model_class: str, train_df_x: pd.DataFrame, test_df_x: p
 
 
 if __name__ == "__main__":
-    np.random.seed(15214)
-    df = get_and_filter_df(DATAMART_PATH, SENT_PATH)
-    N_samps = [15, 20, 30, 50, 80, 120, 180]
-    N_test = 40
-    # first sample test datapoints, as those shall be the same for every experiment (e.g. for varying n)
-    test_samps = np.random.choice(df.index, N_test, replace=False)
-    for N in N_samps:
-        train_samps = np.random.choice(list(set(df.index).difference(test_samps)), N, replace=False)
-        X_train = df.loc[train_samps][FEATURES]
-        X_test = df.loc[test_samps][FEATURES]
-        y_train = df.loc[train_samps][TARGET]
-        y_test = df.loc[test_samps][TARGET]
-        for mod in MODELS_TO_TRAIN:
-            # poisson regression not appropriate for very large target observations, rescaling might be necessary
-            y_train_mod = y_train.copy()
-            y_test_mod = y_test.copy()
-            if type(scales[mod]) == int:
-                y_train_mod = np.ceil(y_train / scales[mod]).astype('int')
-                y_test_mod = np.ceil(y_test / scales[mod]).astype('int')
-            elif scales[mod] == 'log':
-                y_train_mod = np.log(y_train)
-                y_test_mod = np.log(y_test)
-            print("Now doing inference with model {}".format(mod))
-            # load compiled model or compile stan code
-            try:
-                model = pickle.load(open(STAN_MODEL_PATH + mod + '.pkl', 'rb'))
-            except FileNotFoundError:
-                model = pystan.StanModel(model_code=model_code_dict[mod], model_name=mod)
-                pickle.dump(model, open(STAN_MODEL_PATH + mod + '.pkl', 'wb'))
-            # get data for stan model
-            model_data = get_model_data_dict(mod, X_train, X_test, y_train_mod, C=1,
-                                             c_ind=[1] * X_train.shape[0], c_test_ind=[1] * X_test.shape[0])
-            # perform the MCMC and summarize results
-            starttime = time()
-            fit = model.sampling(model_data, n_jobs=3, chains=3, iter=2000, seed=246412)
-            runtime = time() - starttime
-            summary_dict = fit.summary()
-            sum_df = pd.DataFrame(summary_dict['summary'],
-                                  columns=summary_dict['summary_colnames'],
-                                  index=summary_dict['summary_rownames'])
-            # get mean predictions per new observation
-            y_hat = [sum_df.loc['y_pred[{}]'.format(i + 1)]['mean'] for i in range(y_test_mod.shape[0])]
-            if scales[mod] == 'log':
-                y_hat = np.exp(y_hat)
-                y_test_mod = np.exp(y_test_mod)
-            elif type(scales[mod] == int):
-                y_hat = np.array(y_hat) * scales[mod]
-                y_test_mod = y_test_mod * scales[mod]
-            print("MAPE for model {}: ".format(mod), calc_mape(y_hat, y_test_mod))
-            print("RMSE for model {}: ".format(mod), calc_rmse(y_hat, y_test_mod))
-            with open(PRED_RESULTS_PATH + "fit_{}_{}.pkl".format(mod, str(N)), "wb") as f:
-                pickle.dump({'model': model, 'fit': fit, 'y_hat': y_hat, 'y_test': y_test_mod, 'X_test': X_test,
-                             'runtime': runtime}, f, protocol=-1)
+    # seed_list = [15, 521, 12521, 214890]
+    seed_list = [1347]
+    for seed in seed_list:
+        np.random.seed(seed)
+        df = get_and_filter_df(DATAMART_PATH, SENT_PATH)
+        N_samps = [30]
+        N_test = 35
+        # first sample test datapoints, as those shall be the same for every experiment (e.g. for varying n)
+        test_samps = np.random.choice(df.index, N_test, replace=False)
+        for N in N_samps:
+            train_samps = np.random.choice(list(set(df.index).difference(test_samps)), N, replace=False)
+            X_train = df.loc[train_samps][FEATURES]
+            X_test = df.loc[test_samps][FEATURES]
+            y_train = df.loc[train_samps][TARGET]
+            y_test = df.loc[test_samps][TARGET]
+            for mod in MODELS_TO_TRAIN:
+                # poisson regression not appropriate for very large target observations, rescaling might be necessary
+                y_train_mod = y_train.copy()
+                y_test_mod = y_test.copy()
+                if type(scales[mod]) == int:
+                    y_train_mod = np.ceil(y_train / scales[mod]).astype('int')
+                    y_test_mod = np.ceil(y_test / scales[mod]).astype('int')
+                elif scales[mod] == 'log':
+                    y_train_mod = np.log(y_train)
+                    y_test_mod = np.log(y_test)
+                print("Now doing inference with model {}".format(mod))
+                # load compiled model or compile stan code
+                try:
+                    model = pickle.load(open(STAN_MODEL_PATH + mod + '.pkl', 'rb'))
+                except FileNotFoundError:
+                    model = pystan.StanModel(model_code=model_code_dict[mod], model_name=mod)
+                    pickle.dump(model, open(STAN_MODEL_PATH + mod + '.pkl', 'wb'))
+                # get data for stan model
+                model_data = get_model_data_dict(mod, X_train, X_test, y_train_mod, C=1,
+                                                 c_ind=[1] * X_train.shape[0], c_test_ind=[1] * X_test.shape[0])
+                # perform the MCMC and summarize results
+                starttime = time()
+                fit = model.sampling(model_data, n_jobs=4, chains=4, iter=2000, seed=3561756)
+                runtime = time() - starttime
+                summary_dict = fit.summary()
+                sum_df = pd.DataFrame(summary_dict['summary'],
+                                      columns=summary_dict['summary_colnames'],
+                                      index=summary_dict['summary_rownames'])
+                # get mean predictions per new observation
+                y_hat = [sum_df.loc['y_pred[{}]'.format(i + 1)]['mean'] for i in range(y_test_mod.shape[0])]
+                if scales[mod] == 'log':
+                    y_hat = np.exp(y_hat)
+                    y_test_mod = np.exp(y_test_mod)
+                elif type(scales[mod]) == int:
+                    y_hat = np.array(y_hat) * scales[mod]
+                    y_test_mod = y_test_mod * scales[mod]
+                print("MAPE for model {}: ".format(mod), calc_mape(y_hat, y_test_mod))
+                print("log RMSE for model {}: ".format(mod), np.log(calc_rmse(y_hat, y_test_mod)))
+                with open(PRED_RESULTS_PATH + "fit_{}_{}_{}.pkl".format(mod, str(N), str(seed)), "wb") as f:
+                    pickle.dump({'model': model, 'fit': fit, 'y_hat': y_hat, 'y_test': y_test_mod, 'X_test': X_test,
+                                 'runtime': runtime}, f, protocol=-1)

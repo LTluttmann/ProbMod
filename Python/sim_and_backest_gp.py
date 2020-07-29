@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from stan.gp_pr_stan import gp_mod_pois, hierarchical_gp_pr_mod
 from stan.gp_stan import hierarchical_gp_mod
 from stan.sim_gp_pr import sim_data_hiera_gp_pr, sim_data_hiera_gp_norm
-
+import seaborn as sns
 # import own code for model diagnostics
 from helper_func_diagnostics import *
 from train_and_predict import get_and_filter_df, get_model_data_dict
@@ -77,14 +77,15 @@ if __name__ == "__main__":
     df = get_and_filter_df(DATAMART_PATH, SENT_PATH)
     df = df.loc[np.random.choice(df.index, 120, replace=False)]
     scaler = StandardScaler()
-    X = np.random.uniform(-2,2, 120)
+    X = np.random.uniform(-2, 2, 120)
     # specify necessary data for simulation
     data = dict(
         N=df.shape[0],
         C=2,
         x=X.reshape(-1, 1),
-        cc=[1]*int(np.floor(X.shape[0] / 2)) + [2] * int(np.ceil(X.shape[0] / 2)),  # randomly split into 2 countries
-        D=len(FEATURES)
+        cc=[1]*int(np.floor(X.shape[0] / 2)) + [2] * int(np.ceil(X.shape[0] / 2)),  # randomly split into 2 countries  [1]*X.shape[0],  #
+        D=len(FEATURES),
+        length_scale=0.8
     )
     # simulate data from the model
     draw = sm.sampling(data=data, iter=1, algorithm='Fixed_param', chains=1, seed=363360090)
@@ -105,11 +106,12 @@ if __name__ == "__main__":
 
     # plot simulated data
     try:
-        sample = np.random.choice(df_sim.index, 60, replace=False)
+        sample = np.random.choice(df_sim.index, 100, replace=False)
     except:
         sample = df_sim.index
     _ = sns.scatterplot(data=df_sim_plot.loc[sample], x='production_budget', y=TARGET, hue='country', palette=palette)
-    _ = sns.lineplot(df_sim_plot.production_budget, df_sim_plot.f, hue=df_sim_plot.country, palette=palette, legend=False)
+    _ = sns.lineplot(df_sim_plot.production_budget, df_sim_plot.f, hue=df_sim_plot.country, palette=palette,legend=False)
+    plt.title("Simulated Data from GP")
     fig = _.get_figure()
     fig.savefig(FIGURE_PATH + "sim_" + MODEL_TO_SIM)
 
@@ -118,7 +120,7 @@ if __name__ == "__main__":
     # convert target variable to type integer
     if MODEL_TO_SIM == 'pred_hiera_gp_pr':
         df_sim[TARGET] = df_sim[TARGET].astype('int')
-    X_train, X_test, y_train, y_test = get_train_test(df_sim, FEATURES, TARGET)
+    X_train, X_test, y_train, y_test = get_train_test(df_sim, FEATURES, frac_test_set=0.4)
     # get the data for fitting the model
     stan_data = get_model_data_dict(MODEL_TO_SIM, X_train, X_test, y_train, C=len(pd.unique(X_train.index)),
                                     c_ind=X_train.index, c_test_ind=X_test.index)
@@ -151,7 +153,25 @@ if __name__ == "__main__":
         else:
             ape.append(np.abs(y_hat[i] - y_test[i]) / np.abs(y_test[i]))
     print("MAPE:", np.mean(ape))
-
+    plt.show()
+    _ = sns.lineplot(df_sim_plot.production_budget, df_sim_plot.f, hue=df_sim_plot.country, palette=palette)
+    y_hat = [sum_df.loc["y_pred[{}]".format(i + 1)]["mean"] for i in range(len(y_test))]
+    X_test["f_pred"] = y_hat
+    X_test["y_test"] = y_test
+    X_test_1 = X_test[X_test.index == 1].sort_values("production_budget")
+    X_test_2 = X_test[X_test.index == 2].sort_values("production_budget")
+    plt.plot(X_test_1["production_budget"], X_test_1["f_pred"], color=sns.color_palette("cubehelix", 8)[5],
+             label='Mean Prediction for USA')
+    plt.scatter(X_test_1["production_budget"], X_test_1["y_test"], color=sns.color_palette("cubehelix", 8)[5],
+                label='Test Data for USA')
+    plt.plot(X_test_2["production_budget"], X_test_2["f_pred"], color=sns.color_palette("cubehelix", 8)[2],
+             label='Mean Prediction for GB')
+    plt.scatter(X_test_2["production_budget"], X_test_2["y_test"], color=sns.color_palette("cubehelix", 8)[2],
+                label='Test Data for GB')
+    plt.title("Fit on Simulated Data")
+    plt.legend()
+    plt.savefig(FIGURE_PATH + "pred_of_sim_" + MODEL_TO_SIM)
+    plot_trace(fit.extract()["a"][:, 0], "country mean factor $a$", samps["a"][0][0])
     # plot chains
     # _ = plot_trace()
     # retrieve parameters

@@ -78,9 +78,9 @@ transformed parameters {
     }
 }
 model {
-    length_scale ~ gamma(2, 20);
-    alpha ~ normal(0, 1);
-    f_eta ~ normal(0, 1);
+    length_scale ~ inv_gamma(5, 5);
+    alpha ~ std_normal();
+    f_eta ~ std_normal();
     y ~ poisson_log(f);
 }
 generated quantities {

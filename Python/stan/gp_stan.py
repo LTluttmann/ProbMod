@@ -152,7 +152,7 @@ parameters {
     real<lower=0> alpha;
     vector[N] f_eta;
     real<lower=0> sigma;
-    real<lower=0> a[C];
+    real a[C];
 }
 transformed parameters {
     vector[N] f;
