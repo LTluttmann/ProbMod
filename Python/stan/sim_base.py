@@ -1,3 +1,7 @@
+"""
+Scrip to simulate data from  baseline model and horseshoe extension
+"""
+
 sim_data_base_mod = """
 data {
     int<lower=1> N; 

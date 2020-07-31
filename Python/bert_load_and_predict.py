@@ -1,3 +1,7 @@
+"""
+loads BERT tokenizer and specifies predict function for BERT model
+"""
+
 import numpy as np
 
 # tensorflow imports

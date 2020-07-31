@@ -1,3 +1,12 @@
+"""
+This script loads the dataset build from the sources listed in sec. 4.1
+Then it iterates over all movies that are contained in this dataset and also reads the domestic release data of that
+movie (domrele). Using the search query described in sec. 4.1 twitter tweets are scraped using GetOldTweets3 API.
+Then the fine-tuned BERT-Model is loaded and the tweets are classified on the continous scale [0,1]. In the end,
+those predictions are aggregated on the movie level.
+"""
+
+
 import numpy as np
 import tensorflow as tf
 import GetOldTweets3 as got
@@ -10,7 +19,7 @@ from bert_load_and_predict import predict
 
 # configs
 MODEL_PATH = "../1594730309"
-DATAMART_PATH = "../Data/final.xlsx"
+DATAMART_PATH = "../Data/final2.xlsx"
 SAVE_SENT_PATH = '../Data/sent_scores.pkl'
 SAVE_DF_SENT_PATH = '../Data/sent_scores_df.pkl'
 SENT_FEATURES = ["mean_sent_score",

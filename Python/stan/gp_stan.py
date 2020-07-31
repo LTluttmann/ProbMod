@@ -1,15 +1,15 @@
 """
-Code to implement the stan model for a gaussian process poisson regression as proposed
-by Chan & Vasconcelos (2009), available under: http://visal.cs.cityu.edu.hk/static/pubs/conf/iccv09-bpr.pdf
+In the script the following models are implemented:
+- Gaussian Process regression with normal outcome as proposed by Rasmussen and Williams
+- Hierarchical Gaussian Process regression with normal outcome (related to Trangucci)
+
 Parts of the code are related to code from Michael Betancourt, that is publicly available
 under https://betanalpha.github.io/assets/case_studies/gp_part1/part1.html.
 
 The Stan code to generate predictions on new observations of x* . The function
 gen_pred_gp implements the algorithm proposed by C. E. Rasmussen &
 C. K. I. Williams in Gaussian Processes for Machine Learning, p. 19
-(http://www.gaussianprocess.org/gpml/chapters/RW2.pdf). Following Chan & Vasconcelos (2009)
-(http://visal.cs.cityu.edu.hk/static/pubs/conf/iccv09-bpr.pdf), we take the logarithm
-of y as an input to the function gen_pred_gp.
+(http://www.gaussianprocess.org/gpml/chapters/RW2.pdf).
 """
 
 

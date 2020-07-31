@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module simulates data and back estimates the parameters
+This module simulates data and back estimates the parameters for gaussian process models and plots results
 """
 
 # import of necessary modules
@@ -171,24 +171,6 @@ if __name__ == "__main__":
     plt.title("Fit on Simulated Data")
     plt.legend()
     plt.savefig(FIGURE_PATH + "pred_of_sim_" + MODEL_TO_SIM)
+    plt.show()
     plot_trace(fit.extract()["a"][:, 0], "country mean factor $a$", samps["a"][0][0])
-    # plot chains
-    # _ = plot_trace()
-    # retrieve parameters
-    # alpha_fit = pois_samps['alpha']
-    # sigma_fit = pois_samps['sigma']
-    # length_scale = pois_samps['length_scale']
-    # # plot results
-    # plot_trace(alpha_fit, 'alpha', data['alpha'])
-    # plt.show()
-    # plot_trace(length_scale, 'length scale', data['length_scale'])
-    # plt.show()
-    # plot_trace(sigma_fit, 'sigma', data['sigma'])
-    # plt.show()
-
-    # get_pred_plot_with_conf(fit, 250, y_hat, y_test)
-    # plt.show()
-    # # plot
-    # plt.scatter(df.loc[~df.index.isin(sample)].x, y_hat, c='r')
-    # plt.scatter(df.loc[~df.index.isin(sample)].x, df.loc[~df.index.isin(sample)].y, c='b')
-    # plt.show()
+    plt.show()

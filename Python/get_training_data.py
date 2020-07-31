@@ -1,3 +1,9 @@
+"""
+Script to load training and test data for the BERT model, i.e.
+- rottentomatoes reviews (saved in module pytreebank)
+- imdb reviews (extracted from http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz)
+"""
+
 import os
 import re
 import pandas as pd

@@ -3,12 +3,10 @@
 Within this module, data from a poisson process using a gaussian process as prior for the mean
 is simulated. The model is of the form:
 f ~ Gaussian(0, K(x) + sigma^2*I)
-y_i ~Poisson(exp(f_i)) for all i in {1,...,N}
+y_i ~Poisson(a_c + exp(f_i)) for all i in {1,...,N}
 
 We use the stan model in gp_pr_stan.py to back estimate the hyperparameters of the
 Kernel K(x) as well as to to predictions on a holdout set.
-
-Results are displayed at the end of the script, using matplotlib.
 """
 
 sim_data_hiera_gp_pr = """

@@ -61,24 +61,17 @@ from that directory (if they exist).
 """
 
 # Set the output directory for saving model file
-# Optionally, set a GCP bucket location
-
 OUTPUT_DIR = "../model_cache"
 
 tf.gfile.MakeDirs(OUTPUT_DIR)
 print('***** Model output directory: {} *****'.format(OUTPUT_DIR))
-
-"""#Data
-
-First, let's download the dataset, hosted by Stanford. The code below, which downloads, extracts, and imports the IMDB Large Movie Review Dataset, is borrowed from [this Tensorflow tutorial](https://www.tensorflow.org/hub/tutorials/text_classification_with_tf_hub).
-"""
 
 from tensorflow import keras
 import os
 import re
 from get_training_data import get_full_train_and_test
 
-
+# load data from imdb and rottentomatoes
 try:
     print("try to read data from pickle files")
     train = pd.read_pickle("../Data/train.pkl")
@@ -86,7 +79,7 @@ try:
     print("successfully read data from pickle files")
 except FileNotFoundError:
     print("No pickle files available, load data instead.")
-    train, test = get_full_train_and_test() # TODO write pickle
+    train, test = get_full_train_and_test()  # TODO write pickle
     print("loaded data successfully")
 
 """
@@ -102,7 +95,7 @@ For us, our input data is the 'sentence' column and our label is the 'polarity' 
 """
 DATA_COLUMN = 'sentence'
 LABEL_COLUMN = 'polarity'
-# label_list is the list of labels, i.e. True, False or 0, 1 or 'dog', 'cat'
+# label_list is the list of labels, 0 and 1 in our case (representing pos. and negative reviews)
 label_list = [0, 1]
 
 """
@@ -330,7 +323,8 @@ def model_fn_builder(num_labels, learning_rate, num_train_steps,
 
 
 # Compute train and warmup steps from batch size
-# These hyperparameters are copied from this colab notebook (https://colab.sandbox.google.com/github/tensorflow/tpu/blob/master/tools/colab/bert_finetuning_with_cloud_tpus.ipynb)
+# These hyperparameters are copied from this colab notebook
+# (https://colab.sandbox.google.com/github/tensorflow/tpu/blob/master/tools/colab/bert_finetuning_with_cloud_tpus.ipynb)
 BATCH_SIZE = 32
 LEARNING_RATE = 2e-5
 NUM_TRAIN_EPOCHS = 3.0

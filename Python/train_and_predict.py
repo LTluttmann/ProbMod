@@ -3,10 +3,10 @@ import pandas as pd
 import pystan
 import pickle
 from sklearn.preprocessing import StandardScaler, FunctionTransformer, MinMaxScaler
-from helper_func_diagnostics import calc_mape, calc_rmse
+from helper_func_diagnostics import calc_mape, calc_rmse, plot_trace
 from time import time
 # import of stan models
-from stan.gp_pr_stan import gp_mod_pois, hierarchical_gp_pr_mod
+from stan.gp_pr_stan import gp_mod_pois, hierarchical_gp_pr_mod, gp_mod_neg_bin
 from stan.gp_stan import gp_mod, hierarchical_gp_mod
 from stan.orig_pois_reg_stan import hierarchical_model_pois, hierarchical_model_normal
 from stan.regularized_pois_reg_stan import hierarchical_model_regularized, hierarchical_model_regularized_normal
@@ -29,7 +29,7 @@ PRED_RESULTS_PATH = "../results/"
 # pred_horseshoe_normal: like horseshoe, but with normal output
 # pred_hiera_gp_pr : gaussian process regression with normal output and hierarchies
 # pred_hiera_gp: gaussian process regression with poisson output and hierarchies
-MODELS_TO_TRAIN = ["pred_horseshoe", "pred_base"]  #"pred_base", , "pred_gp" , "pred_gp"
+MODELS_TO_TRAIN = ["pred_base", "pred_horseshoe" , "pred_gp"]  #"pred_base", , "pred_horseshoe" , "pred_gp"
 
 # Define Target variable
 TARGET = "worldwide_box_office"
@@ -38,7 +38,7 @@ TARGET = "worldwide_box_office"
 FEATURES = [
     'production_budget', 'dist', 'stars', 'direc', 'screens',
     'opening_weekend_revenue', 'ratio_pos_tweets', 'total_tweets',
-    'adventure', 'comedy', 'drama', 'horror', 'thriller', 'action', 'dec', 'romcomedy'
+    'adventure', 'comedy', 'drama', 'horror', 'thriller', 'action'
 ]
 """"""
 # ----------------------------------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ FEATURES = [
 # assign the stan code to their corresponding models
 model_code_dict = dict(
     pred_gp=gp_mod,
-    pred_gp_pr=gp_mod_pois,
+    pred_gp_pr=gp_mod_neg_bin,
     pred_base=hierarchical_model_pois,
     pred_base_normal=hierarchical_model_normal,
     pred_horseshoe=hierarchical_model_regularized,
@@ -117,7 +117,7 @@ def get_model_data_dict(model_class: str, train_df_x: pd.DataFrame, test_df_x: p
     test_df_x = test_df_x.copy()
     if model_class in ['pred_gp_pr', 'pred_gp']:
         # standard scale to avoid biases in rbf kernel
-        scaler = MinMaxScaler()
+        scaler = StandardScaler()
         train_df_x = scaler.fit_transform(train_df_x)
         test_df_x = scaler.transform(test_df_x)
         stan_data_gp = dict(N=train_df_x.shape[0], D=train_df_x.shape[1], N_pred=test_df_x.shape[0],
@@ -155,21 +155,26 @@ def get_model_data_dict(model_class: str, train_df_x: pd.DataFrame, test_df_x: p
 
 
 if __name__ == "__main__":
-    # seed_list = [15, 521, 12521, 214890]
-    seed_list = [1347]
+    # might want to use several seeds to overcome potential randomness in the results
+    seed_list = [1348]
     for seed in seed_list:
         np.random.seed(seed)
         df = get_and_filter_df(DATAMART_PATH, SENT_PATH)
-        N_samps = [30]
+        # use different training set sizes for analysis
+        N_samps = [15, 20, 30, 40, 80, 120, 180]
+        # fixed test set sizes
         N_test = 35
         # first sample test datapoints, as those shall be the same for every experiment (e.g. for varying n)
         test_samps = np.random.choice(df.index, N_test, replace=False)
         for N in N_samps:
+            # sample training instances
             train_samps = np.random.choice(list(set(df.index).difference(test_samps)), N, replace=False)
+            # prepare data
             X_train = df.loc[train_samps][FEATURES]
             X_test = df.loc[test_samps][FEATURES]
             y_train = df.loc[train_samps][TARGET]
             y_test = df.loc[test_samps][TARGET]
+            # loop over all specified models
             for mod in MODELS_TO_TRAIN:
                 # poisson regression not appropriate for very large target observations, rescaling might be necessary
                 y_train_mod = y_train.copy()
@@ -187,27 +192,30 @@ if __name__ == "__main__":
                 except FileNotFoundError:
                     model = pystan.StanModel(model_code=model_code_dict[mod], model_name=mod)
                     pickle.dump(model, open(STAN_MODEL_PATH + mod + '.pkl', 'wb'))
-                # get data for stan model
+                # get data for stan model; in our data only one 'country' dimension-->set c_ind to 1 for every instance
                 model_data = get_model_data_dict(mod, X_train, X_test, y_train_mod, C=1,
                                                  c_ind=[1] * X_train.shape[0], c_test_ind=[1] * X_test.shape[0])
-                # perform the MCMC and summarize results
+                # perform the MCMC and save runtime
                 starttime = time()
                 fit = model.sampling(model_data, n_jobs=4, chains=4, iter=2000, seed=3561756)
                 runtime = time() - starttime
+                # get summary of results
                 summary_dict = fit.summary()
                 sum_df = pd.DataFrame(summary_dict['summary'],
                                       columns=summary_dict['summary_colnames'],
                                       index=summary_dict['summary_rownames'])
                 # get mean predictions per new observation
                 y_hat = [sum_df.loc['y_pred[{}]'.format(i + 1)]['mean'] for i in range(y_test_mod.shape[0])]
+                # reverse the scaling of the target
                 if scales[mod] == 'log':
                     y_hat = np.exp(y_hat)
                     y_test_mod = np.exp(y_test_mod)
                 elif type(scales[mod]) == int:
                     y_hat = np.array(y_hat) * scales[mod]
                     y_test_mod = y_test_mod * scales[mod]
-                print("MAPE for model {}: ".format(mod), calc_mape(y_hat, y_test_mod))
+                print("MAPE for model {}: ".format(mod), calc_mape(y_hat, y_test_mod))  # print some error measures
                 print("log RMSE for model {}: ".format(mod), np.log(calc_rmse(y_hat, y_test_mod)))
+                # save results so that they can be analysed in a notebook --> better plotting options
                 with open(PRED_RESULTS_PATH + "fit_{}_{}_{}.pkl".format(mod, str(N), str(seed)), "wb") as f:
                     pickle.dump({'model': model, 'fit': fit, 'y_hat': y_hat, 'y_test': y_test_mod, 'X_test': X_test,
                                  'runtime': runtime}, f, protocol=-1)
