@@ -34,7 +34,7 @@ ipykernel @ file:///D:/bld/ipykernel_1594210360520/work/dist/ipykernel-5.3.2-py3
 ipython @ file:///D:/bld/ipython_1593235680304/work
 ipython-genutils==0.2.0
 jedi @ file:///D:/bld/jedi_1592619562975/work
-Jinja2==2.11.2
+Jinja2==2.11.3
 joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1593624380152/work
 jsonschema==3.2.0
 jupyter-client @ file:///home/conda/feedstock_root/build_artifacts/jupyter_client_1593562235049/work
